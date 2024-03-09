@@ -7,6 +7,7 @@ import copy
 import unittest
 from itertools import zip_longest, islice
 from unittest import TestCase, mock
+from typing import Union, Any, Set
 
 import numpy as np
 
@@ -18,10 +19,11 @@ from qupulse.parameter_scope import DictScope
 from qupulse.program.loop import Loop
 from qupulse.program.volatile import VolatileRepetitionCount
 from qupulse.program.waveforms import ConstantWaveform, Waveform
+from qupulse.utils.types import TimeType, ChannelID
 
 
 class DummyWaveform(Waveform):
-    def __init__(self, duration: Union[float, TimeType]=0, sample_output: Union[numpy.ndarray, dict]=None, defined_channels=None) -> None:
+    def __init__(self, duration: Union[float, TimeType]=0, sample_output: Union[np.ndarray, dict]=None, defined_channels=None) -> None:
         super().__init__(duration=duration if isinstance(duration, TimeType) else TimeType.from_float(duration))
         self.sample_output = sample_output
         if defined_channels is None:
@@ -52,11 +54,11 @@ class DummyWaveform(Waveform):
 
     def unsafe_sample(self,
                       channel: ChannelID,
-                      sample_times: numpy.ndarray,
-                      output_array: numpy.ndarray = None) -> numpy.ndarray:
+                      sample_times: np.ndarray,
+                      output_array: np.ndarray = None) -> np.ndarray:
         self.sample_calls.append((channel, list(sample_times), output_array))
         if output_array is None:
-            output_array = numpy.empty_like(sample_times)
+            output_array = np.empty_like(sample_times)
         if self.sample_output is not None:
             if isinstance(self.sample_output, dict):
                 output_array[:] = self.sample_output[channel]
@@ -81,6 +83,19 @@ class DummyWaveform(Waveform):
         return DummyWaveform(sample_output=sample_output,
                              duration=duration,
                              defined_channels=defined_channels)
+
+    @property
+    def defined_channels(self):
+        return self.defined_channels_
+
+    def last_value(self, channel) -> float:
+        if self.sample_output is None:
+            return 0.
+        elif isinstance(self.sample_output, dict):
+            sample_output = self.sample_output[channel]
+        else:
+            sample_output = self.sample_output
+        return sample_output[-1]
 
 
 def take(n, iterable):
@@ -480,14 +495,14 @@ class LoopToSEQCTranslationTests(TestCase):
                                    user_registers=user_registers)
 
         expected = 'asdf'
-        with mock.patch('qupulse._program.seqc.loop_to_seqc', return_value=expected) as mocked_loop_to_seqc:
+        with mock.patch('qupulse_hdawg_legacy.seqc.loop_to_seqc', return_value=expected) as mocked_loop_to_seqc:
             result = loop_to_seqc(loop, **loop_to_seqc_kwargs)
             self.assertEqual(result, expected)
             mocked_loop_to_seqc.assert_called_once_with(loop[0], **loop_to_seqc_kwargs)
 
         loop.repetition_count = 14
         expected = Repeat(14, 'asdfg')
-        with mock.patch('qupulse._program.seqc.loop_to_seqc', return_value=expected.scope) as mocked_loop_to_seqc:
+        with mock.patch('qupulse_hdawg_legacy.seqc.loop_to_seqc', return_value=expected.scope) as mocked_loop_to_seqc:
             result = loop_to_seqc(loop, **loop_to_seqc_kwargs)
             self.assertEqual(result, expected)
             mocked_loop_to_seqc.assert_called_once_with(loop[0], **loop_to_seqc_kwargs)
@@ -505,7 +520,7 @@ class LoopToSEQCTranslationTests(TestCase):
         expected_calls = [mock.call(loop, **loop_to_seqc_kwargs) for loop in loops]
         expected_result = [[wf1, wf2, wf1, wf1], [wf3], [wf1, wf1, wf1], [Scope([wf3, wf1]), Scope([wf3, wf1])], [wf3]]
 
-        with mock.patch('qupulse._program.seqc.loop_to_seqc', wraps=dummy_loop_to_seqc) as mock_loop_to_seqc:
+        with mock.patch('qupulse_hdawg_legacy.seqc.loop_to_seqc', wraps=dummy_loop_to_seqc) as mock_loop_to_seqc:
             result = to_node_clusters(loops, loop_to_seqc_kwargs)
             self.assertEqual(mock_loop_to_seqc.mock_calls, expected_calls)
         self.assertEqual(expected_result, result)
@@ -519,7 +534,7 @@ class LoopToSEQCTranslationTests(TestCase):
         loop_to_seqc_kwargs = {'my': 'kwargs'}
 
         loops = [wf1, wf2, wf3] * 3 + [wf1] + [wf2, wf4] * 3 + [wf1]
-        with mock.patch('qupulse._program.seqc.loop_to_seqc', wraps=dummy_loop_to_seqc) as mock_loop_to_seqc:
+        with mock.patch('qupulse_hdawg_legacy.seqc.loop_to_seqc', wraps=dummy_loop_to_seqc) as mock_loop_to_seqc:
             result = to_node_clusters(loops, loop_to_seqc_kwargs)
         expected_result = [[Scope([wf1, wf2, wf3])]*3, [wf1], [Scope([wf2, wf4])]*3, [wf1]]
         self.assertEqual(expected_result, result)
@@ -601,9 +616,9 @@ class LoopToSEQCTranslationTests(TestCase):
             else:
                 return None
 
-        p1 = mock.patch('qupulse._program.seqc.to_node_clusters', return_value=node_clusters)
-        p2 = mock.patch('qupulse._program.seqc.find_sharable_waveforms', wraps=dummy_find_sharable_waveforms)
-        p3 = mock.patch('qupulse._program.seqc.mark_sharable_waveforms')
+        p1 = mock.patch('qupulse_hdawg_legacy.seqc.to_node_clusters', return_value=node_clusters)
+        p2 = mock.patch('qupulse_hdawg_legacy.seqc.find_sharable_waveforms', wraps=dummy_find_sharable_waveforms)
+        p3 = mock.patch('qupulse_hdawg_legacy.seqc.mark_sharable_waveforms')
 
         with p1 as to_node_clusters_mock, p2 as find_share_mock, p3 as mark_share_mock:
             result = loop_to_seqc(root, **loop_to_seqc_kwargs)
@@ -972,18 +987,18 @@ var playback_finished = 0;
 while (true) {
   // read program selection value
   prog_sel = getUserReg(PROG_SEL_REGISTER);
-  
+
   // calculate value to write back to PROG_SEL_REGISTER
   new_prog_sel = prog_sel | playback_finished;
   if (!(prog_sel & NO_RESET_MASK)) new_prog_sel &= INVERTED_PROG_SEL_MASK;
   setUserReg(PROG_SEL_REGISTER, new_prog_sel);
-  
+
   // reset playback flag
   playback_finished = 0;
-  
+
   // only use part of prog sel that does not mean other things to select the program.
   prog_sel &= PROG_SEL_MASK;
-  
+
   switch (prog_sel) {
     case 1:
       test_function();
@@ -1105,18 +1120,18 @@ var playback_finished = 0;
 while (true) {
   // read program selection value
   prog_sel = getUserReg(PROG_SEL_REGISTER);
-  
+
   // calculate value to write back to PROG_SEL_REGISTER
   new_prog_sel = prog_sel | playback_finished;
   if (!(prog_sel & NO_RESET_MASK)) new_prog_sel &= INVERTED_PROG_SEL_MASK;
   setUserReg(PROG_SEL_REGISTER, new_prog_sel);
-  
+
   // reset playback flag
   playback_finished = 0;
-  
+
   // only use part of prog sel that does not mean other things to select the program.
   prog_sel &= PROG_SEL_MASK;
-  
+
   switch (prog_sel) {
     case 1:
       test_function();

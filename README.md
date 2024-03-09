@@ -18,4 +18,4 @@ pip install qupulse-hdawg-legacy
 
 ## License
 
-`qupulse-hdawg-legacy` is distributed under the terms of the [GPLv3](https://spdx.org/licenses/GPL-3.0.html) license.
+`qupulse-hdawg-legacy` is distributed under the terms of the [GPL-3.0](https://spdx.org/licenses/GPL-3.0.html) license.
