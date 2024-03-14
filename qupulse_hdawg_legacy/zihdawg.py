@@ -1,5 +1,4 @@
 import numbers
-from pathlib import Path
 import functools
 from typing import Tuple, Set, Callable, Optional, Mapping, Generator, Union, Sequence, Dict
 from enum import Enum
@@ -28,9 +27,10 @@ except ImportError:
 
 import time
 
+from qupulse_hdawg_legacy.seqc import HDAWGProgramManager, UserRegister, WaveformFileSystem
+
 from qupulse.utils.types import ChannelID, TimeType, time_from_float
 from qupulse.program.loop import Loop, make_compatible
-from qupulse._program.seqc import HDAWGProgramManager, UserRegister, WaveformFileSystem
 from qupulse.hardware.awgs.base import AWG, ChannelNotFoundException, AWGAmplitudeOffsetHandling
 from qupulse.hardware.util import traced
 
