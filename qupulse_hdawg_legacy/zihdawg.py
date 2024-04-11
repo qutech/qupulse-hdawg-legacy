@@ -142,6 +142,26 @@ class HDAWGRepresentation:
         # activates channel groups
         self.channel_grouping = grouping
 
+    @classmethod
+    def connect_to(cls, device_serial: str = None, **init_kwargs):
+        """
+        :param device_serial:
+        :param init_kwargs: Forwarded to `HDAWGRepresentation.__init__`
+        :return:
+        """
+        discovery = zhinst_core.ziDiscovery()
+        device_id = discovery.find(device_serial)
+        device_props = discovery.get(device_id)
+        return cls(
+            device_serial=device_serial,
+            device_interface=device_props['interfaces'][0],
+            data_server_addr=device_props['serveraddress'],
+            data_server_port=device_props['serverport'],
+            api_level_number=device_props['apilevel'],
+            **init_kwargs,
+        )
+
+
     @property
     def waveform_file_system(self) -> WaveformFileSystem:
         return self._waveform_file_system
