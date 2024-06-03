@@ -964,7 +964,7 @@ class ELFManager(ABC):
 
 
 class SimpleELFManager(ELFManager):
-    def __init__(self, awg_module: zhinst.ziPython.AwgModule):
+    def __init__(self, awg_module: zhinst_core.AwgModule):
         """This implementation does not attempt to do something clever like caching."""
         super().__init__(awg_module)
 
@@ -1000,7 +1000,7 @@ ELFManager.DEFAULT_CLS = SimpleELFManager
 
 
 class CachingELFManager(ELFManager):
-    def __init__(self, awg_module: zhinst.ziPython.AwgModule):
+    def __init__(self, awg_module: zhinst_core.AwgModule):
         """FAILS TO UPLOAD THE CORRECT ELF FOR SOME REASON"""
         super().__init__(awg_module)
 
